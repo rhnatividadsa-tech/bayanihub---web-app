@@ -23,6 +23,13 @@ export default function PledgePage() {
     { qty: '', name: '' },
   ]);
 
+  // --- VETTING STATES (For Volunteer Flow) ---
+  const [checkboxes, setCheckboxes] = useState({
+    background: false,
+    documents: false,
+    age: false,
+  });
+
   // --- VALIDATION & MODAL STATES ---
   const [showErrors, setShowErrors] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -46,9 +53,9 @@ export default function PledgePage() {
   ];
 
   const volunteerRoles = [
-    { id: 'medic', title: 'Medic', desc: 'Primary medical care & triage. Valid Medical/Nursing License required. Basic first aid & CPR knowledge.', icon: '/icon-medic.png' },
-    { id: 'logistics', title: 'Logistics', desc: "Manage supply distribution & transport. Valid Pro Driver's License required. Must lift 25+ lbs.", icon: '/icon-logistics.png' },
-    { id: 'field', title: 'Field', desc: 'Manage crowd flow, community outreach & data entry. Strong communication skills needed.', icon: '/icon-field.png' }
+    { id: 'medic', title: 'Medic', desc: 'Primary medical care & triage. Valid Medical/Nursing License required. Basic first aid & CPR knowledge.', icon: '/medic_logo.png' },
+    { id: 'logistics', title: 'Logistics', desc: "Manage supply distribution & transport. Valid Pro Driver's License required. Must lift 25+ lbs.", icon: '/logistics_logo.png' },
+    { id: 'field', title: 'Field', desc: 'Manage crowd flow, community outreach & data entry. Strong communication skills needed.', icon: '/field_logo.png' }
   ];
 
   const addItem = () => setItems([...items, { qty: '', name: '' }]);
@@ -59,27 +66,35 @@ export default function PledgePage() {
     setItems(newItems);
   };
 
+  const toggleCheckbox = (key: keyof typeof checkboxes) => {
+    setCheckboxes(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   // --- VALIDATION LOGIC ---
   const isSiteValid = selectedSite !== 'Select Site Location';
   const isTimeValid = selectedTime !== 'Select Time Slot';
   const validItems = items.filter(item => item.qty.trim() !== '' && item.name.trim() !== '');
   const isItemsValid = validItems.length > 0;
-  const isVolunteerValid = volunteerChoice === 'no' || (volunteerChoice === 'yes' && selectedRole !== null);
+  
+  const isCheckboxesValid = checkboxes.background && checkboxes.documents && checkboxes.age;
+  const isVolunteerValid = volunteerChoice === 'no' || (volunteerChoice === 'yes' && selectedRole !== null && isCheckboxesValid);
 
-  // Triggered when "Submit Pledge Donation" is clicked
   const handleInitialSubmit = () => {
     if (isSiteValid && isTimeValid && isItemsValid && isVolunteerValid) {
-      setIsConfirmed(false); // Reset checkbox
-      setShowModal(true);    // Open confirmation modal
+      setIsConfirmed(false);
+      setShowModal(true);
     } else {
-      setShowErrors(true);   // Show red borders
+      setShowErrors(true);
     }
   };
 
-  // Triggered when "Confirm Donation" inside the modal is clicked
   const handleFinalConfirm = () => {
     if (isConfirmed) {
-      router.push('/'); // Or route to a success/thank you page
+      if (volunteerChoice === 'yes') {
+        router.push('/volunteer'); 
+      } else {
+        router.push('/'); 
+      }
     }
   };
 
@@ -94,7 +109,6 @@ export default function PledgePage() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Confirm Your Pledge</Text>
             
-            {/* Details Summary Box */}
             <View style={styles.summaryBox}>
               <Text style={styles.summaryLabel}>Location:</Text>
               <Text style={styles.summaryValue}>{selectedSite}</Text>
@@ -115,7 +129,6 @@ export default function PledgePage() {
               </Text>
             </View>
 
-            {/* Confirmation Checkbox */}
             <Pressable style={styles.checkboxRow} onPress={() => setIsConfirmed(!isConfirmed)}>
               <View style={[styles.checkbox, isConfirmed && styles.checkboxChecked]}>
                 {isConfirmed && <Text style={styles.checkmark}>✓</Text>}
@@ -123,7 +136,6 @@ export default function PledgePage() {
               <Text style={styles.checkboxText}>I confirm that all details provided are correct and I commit to this pledge.</Text>
             </Pressable>
 
-            {/* Modal Actions */}
             <View style={styles.modalActions}>
               <Pressable style={styles.cancelBtn} onPress={() => setShowModal(false)}>
                 <Text style={styles.cancelBtnText}>Back</Text>
@@ -133,7 +145,9 @@ export default function PledgePage() {
                 onPress={handleFinalConfirm}
                 disabled={!isConfirmed}
               >
-                <Text style={styles.confirmBtnText}>Confirm Donation</Text>
+                <Text style={styles.confirmBtnText}>
+                  {volunteerChoice === 'yes' ? 'Confirm & Proceed to Screening' : 'Confirm Donation'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -166,196 +180,252 @@ export default function PledgePage() {
       </View>
 
       {/* MAIN BODY AREA */}
-      <View style={styles.pageBody}>
-        <Image source={{ uri: '/hero-bg.png' }} style={styles.bgImage} resizeMode="cover" />
-        <View style={styles.bgOverlay} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.pageBody}>
+          <Image source={{ uri: '/hero-bg.png' }} style={styles.bgImage} resizeMode="cover" />
+          <View style={styles.bgOverlay} />
 
-        {/* White Content Card */}
-        <View style={styles.contentCard}>
-          <View style={styles.headerBanner}>
-            <Text style={styles.bannerText}>Pledge Donation</Text>
-          </View>
-
-          <View style={styles.formGrid}>
+          {/* Locked Height Content Card */}
+          <View style={styles.contentCard}>
             
-            {/* LEFT COLUMN: Site & Time */}
-            <View style={[styles.formColumn, { zIndex: 50 }]}>
-              <Text style={styles.fieldLabel}>Select Site Location</Text>
-              <View style={{ position: 'relative', zIndex: 100 }}>
-                <Pressable 
-                  style={[styles.pickerBox, showErrors && !isSiteValid && styles.errorBorder]} 
-                  onPress={() => {
-                    setIsSiteDropdownOpen(!isSiteDropdownOpen);
-                    setIsTimeDropdownOpen(false);
-                  }}
-                >
-                  <Text style={[styles.pickerText, !isSiteValid && {color: '#888'}]}>"{selectedSite}"</Text>
-                  <Text style={[styles.pickerArrow, showErrors && !isSiteValid && {color: '#E53E3E'}]}>∨</Text>
-                </Pressable>
-                {showErrors && !isSiteValid && <Text style={styles.errorText}>● Site Location is required.</Text>}
-
-                {isSiteDropdownOpen && (
-                  <View style={styles.dropdownMenu}>
-                    <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={true}>
-                      {ustBuildings.map((building, index) => (
-                        <Pressable 
-                          key={index} 
-                          style={styles.dropdownItem}
-                          onPress={() => {
-                            setSelectedSite(building);
-                            setIsSiteDropdownOpen(false);
-                            if(showErrors) setShowErrors(false);
-                          }}
-                        >
-                          <Text style={styles.dropdownItemText}>{building}</Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-
-              <Text style={[styles.fieldLabel, { marginTop: 40 }]}>Select Time Slot</Text>
-              <View style={{ position: 'relative', zIndex: 90 }}>
-                <Pressable 
-                  style={[styles.pickerBox, showErrors && !isTimeValid && styles.errorBorder]} 
-                  onPress={() => {
-                    setIsTimeDropdownOpen(!isTimeDropdownOpen);
-                    setIsSiteDropdownOpen(false);
-                  }}
-                >
-                  <Text style={[styles.pickerText, !isTimeValid && {color: '#888'}]}>"{selectedTime}"</Text>
-                  <Text style={[styles.pickerArrow, showErrors && !isTimeValid && {color: '#E53E3E'}]}>∨</Text>
-                </Pressable>
-                {showErrors && !isTimeValid && <Text style={styles.errorText}>● Time Slot is required.</Text>}
-
-                {isTimeDropdownOpen && (
-                  <View style={styles.dropdownMenu}>
-                    <ScrollView style={{ maxHeight: 150 }} showsVerticalScrollIndicator={true}>
-                      {timeSlots.map((time, index) => (
-                        <Pressable 
-                          key={index} 
-                          style={styles.dropdownItem}
-                          onPress={() => {
-                            setSelectedTime(time);
-                            setIsTimeDropdownOpen(false);
-                          }}
-                        >
-                          <Text style={styles.dropdownItemText}>{time}</Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
+            <View style={styles.headerBanner}>
+              <Text style={styles.bannerText}>Pledge Donation</Text>
             </View>
 
-            {/* MIDDLE COLUMN: Items */}
-            <View style={[styles.formColumn, { flex: 1.5, zIndex: 10 }]}>
-              <Text style={styles.fieldLabel}>Input Donation Item Details</Text>
-              <View style={styles.itemHeaders}>
-                <Text style={styles.qtyHeader}>Qty.</Text>
-                <Text style={styles.nameHeader}>Item Name</Text>
-                <View style={{ width: 35 }} />
-              </View>
+            <View style={styles.formGrid}>
+              
+              {/* LEFT COLUMN: Site & Time */}
+              <View style={[styles.formColumn, { zIndex: 50 }]}>
+                <Text style={styles.fieldLabel}>Select Site Location</Text>
+                <View style={{ position: 'relative', zIndex: 100 }}>
+                  <Pressable 
+                    style={[styles.pickerBox, showErrors && !isSiteValid && styles.errorBorder]} 
+                    onPress={() => { setIsSiteDropdownOpen(!isSiteDropdownOpen); setIsTimeDropdownOpen(false); }}
+                  >
+                    <Text style={[styles.pickerText, !isSiteValid && {color: '#888'}]}>"{selectedSite}"</Text>
+                    <Text style={[styles.pickerArrow, showErrors && !isSiteValid && {color: '#E53E3E'}]}>∨</Text>
+                  </Pressable>
+                  {showErrors && !isSiteValid && <Text style={styles.errorText}>● Site Location is required.</Text>}
 
-              <View style={styles.itemsOuterFrame}>
-                <ScrollView style={styles.itemsScroll} showsVerticalScrollIndicator={true}>
-                  {items.map((item, index) => {
-                    const showInputError = showErrors && !isItemsValid && item.qty === '' && item.name === '';
-                    return (
-                      <View key={index} style={styles.itemRow}>
-                        <TextInput 
-                          style={[styles.qtyBox, showInputError && styles.errorBorder]} 
-                          value={item.qty} 
-                          onChangeText={(text) => updateItem(index, 'qty', text)}
-                          placeholder="No."
-                          placeholderTextColor="#999"
-                          keyboardType="numeric"
-                        />
-                        <TextInput 
-                          style={[styles.nameBox, showInputError && styles.errorBorder]} 
-                          value={item.name} 
-                          onChangeText={(text) => updateItem(index, 'name', text)}
-                          placeholder='"Item Name"'
-                          placeholderTextColor="#999"
-                        />
-                        <Pressable style={styles.removeBtn} onPress={() => removeItem(index)}>
-                          <Text style={styles.removeBtnText}>✕</Text>
-                        </Pressable>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-              {showErrors && !isItemsValid && <Text style={styles.errorText}>● Input Details is required.</Text>}
-              <Pressable style={styles.addItemBtn} onPress={addItem}><Text style={styles.addItemBtnText}>+ ADD ITEM</Text></Pressable>
-            </View>
-
-            {/* RIGHT COLUMN: Volunteer Roles & Submit */}
-            <View style={[styles.formColumn, { zIndex: 10, display: 'flex', flexDirection: 'column' }]}>
-              <Text style={styles.fieldLabel}>Do You Want to Volunteer ?</Text>
-              <View style={styles.toggleRow}>
-                <Pressable 
-                  style={[styles.toggleBtn, volunteerChoice === 'yes' && styles.toggleBtnActive, showErrors && volunteerChoice === null && styles.errorBorder]}
-                  onPress={() => setVolunteerChoice('yes')}
-                >
-                  <Text style={[styles.toggleText, volunteerChoice === 'yes' && styles.toggleTextActive]}>Yes, view roles</Text>
-                </Pressable>
-                
-                <Pressable 
-                  style={[styles.toggleBtn, volunteerChoice === 'no' && styles.toggleBtnActive, showErrors && volunteerChoice === null && styles.errorBorder]}
-                  onPress={() => {
-                    setVolunteerChoice('no');
-                    setSelectedRole(null);
-                  }}
-                >
-                  <Text style={[styles.toggleText, volunteerChoice === 'no' && styles.toggleTextActive]}>No</Text>
-                </Pressable>
-              </View>
-              {showErrors && volunteerChoice === null && <Text style={styles.errorText}>● Please select an option.</Text>}
-
-              {/* DYNAMIC ROLES SECTION */}
-              {volunteerChoice === 'yes' && (
-                <View style={styles.rolesContainer}>
-                  {volunteerRoles.map(role => (
-                    <Pressable 
-                      key={role.id}
-                      style={[styles.roleCard, selectedRole === role.id && styles.roleCardActive, showErrors && volunteerChoice === 'yes' && selectedRole === null && styles.errorBorder]}
-                      onPress={() => setSelectedRole(role.id)}
-                    >
-                      <View style={styles.roleIconBox}>
-                        <Image source={{ uri: role.icon }} style={styles.roleIcon} resizeMode="contain" />
-                        <Text style={styles.roleIconLabel}>{role.title}</Text>
-                      </View>
-                      <View style={styles.roleTextContainer}>
-                        <Text style={styles.roleTitle}>{role.title}</Text>
-                        <Text style={styles.roleDesc}>{role.desc}</Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                  {showErrors && volunteerChoice === 'yes' && selectedRole === null && (
-                    <Text style={[styles.errorText, { marginTop: 0 }]}>● Please select a volunteer role.</Text>
+                  {isSiteDropdownOpen && (
+                    <View style={styles.dropdownMenu}>
+                      <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={true}>
+                        {ustBuildings.map((building, index) => (
+                          <Pressable 
+                            key={index} 
+                            style={styles.dropdownItem}
+                            onPress={() => { setSelectedSite(building); setIsSiteDropdownOpen(false); if(showErrors) setShowErrors(false); }}
+                          >
+                            <Text style={styles.dropdownItemText}>{building}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
                   )}
                 </View>
-              )}
 
-              <View style={{ flex: 1 }} />
+                <Text style={[styles.fieldLabel, { marginTop: 40 }]}>Select Time Slot</Text>
+                <View style={{ position: 'relative', zIndex: 90 }}>
+                  <Pressable 
+                    style={[styles.pickerBox, showErrors && !isTimeValid && styles.errorBorder]} 
+                    onPress={() => { setIsTimeDropdownOpen(!isTimeDropdownOpen); setIsSiteDropdownOpen(false); }}
+                  >
+                    <Text style={[styles.pickerText, !isTimeValid && {color: '#888'}]}>"{selectedTime}"</Text>
+                    <Text style={[styles.pickerArrow, showErrors && !isTimeValid && {color: '#E53E3E'}]}>∨</Text>
+                  </Pressable>
+                  {showErrors && !isTimeValid && <Text style={styles.errorText}>● Time Slot is required.</Text>}
 
-              {showErrors && (!isSiteValid || !isTimeValid || !isItemsValid || !isVolunteerValid) && (
-                <Text style={[styles.errorText, { textAlign: 'center', marginBottom: 10, fontSize: 13 }]}>
-                  ● Please address the required fields highlighted above.
-                </Text>
-              )}
+                  {isTimeDropdownOpen && (
+                    <View style={styles.dropdownMenu}>
+                      <ScrollView style={{ maxHeight: 150 }} showsVerticalScrollIndicator={true}>
+                        {timeSlots.map((time, index) => (
+                          <Pressable 
+                            key={index} 
+                            style={styles.dropdownItem}
+                            onPress={() => { setSelectedTime(time); setIsTimeDropdownOpen(false); }}
+                          >
+                            <Text style={styles.dropdownItemText}>{time}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
 
-              <Pressable style={styles.submitPledgeBtn} onPress={handleInitialSubmit}>
-                <Text style={styles.submitBtnText}>Submit Pledge Donation</Text>
-              </Pressable>
+              {/* MIDDLE COLUMN: Items */}
+              <View style={[styles.formColumn, { flex: 1.5, zIndex: 10, display: 'flex', flexDirection: 'column' }]}>
+                <Text style={styles.fieldLabel}>Input Donation Item Details</Text>
+                <View style={styles.itemHeaders}>
+                  <Text style={styles.qtyHeader}>Qty.</Text>
+                  <Text style={styles.nameHeader}>Item Name</Text>
+                  <View style={{ width: 35 }} />
+                </View>
+
+                <View style={styles.itemsOuterFrame}>
+                  <ScrollView style={styles.itemsScroll} showsVerticalScrollIndicator={true}>
+                    {items.map((item, index) => {
+                      const showInputError = showErrors && !isItemsValid && item.qty === '' && item.name === '';
+                      return (
+                        <View key={index} style={styles.itemRow}>
+                          <TextInput 
+                            style={[styles.qtyBox, showInputError && styles.errorBorder]} 
+                            value={item.qty} 
+                            onChangeText={(text) => updateItem(index, 'qty', text)}
+                            placeholder="No."
+                            placeholderTextColor="#999"
+                            keyboardType="numeric"
+                          />
+                          <TextInput 
+                            style={[styles.nameBox, showInputError && styles.errorBorder]} 
+                            value={item.name} 
+                            onChangeText={(text) => updateItem(index, 'name', text)}
+                            placeholder='"Item Name"'
+                            placeholderTextColor="#999"
+                          />
+                          <Pressable style={styles.removeBtn} onPress={() => removeItem(index)}>
+                            <Text style={styles.removeBtnText}>✕</Text>
+                          </Pressable>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+                {showErrors && !isItemsValid && <Text style={styles.errorText}>● Input Details is required.</Text>}
+                <Pressable style={styles.addItemBtn} onPress={addItem}><Text style={styles.addItemBtnText}>+ ADD ITEM</Text></Pressable>
+              </View>
+
+              {/* RIGHT COLUMN: Volunteer Roles & Submit */}
+              <View style={[styles.formColumn, { zIndex: 10, display: 'flex', flexDirection: 'column' }]}>
+                
+                {/* Fixed Top Section */}
+                <View>
+                  <Text style={styles.fieldLabel}>Do You Want to Volunteer ?</Text>
+                  <View style={styles.toggleRow}>
+                    <Pressable 
+                      style={[styles.toggleBtn, volunteerChoice === 'yes' && styles.toggleBtnActive, showErrors && volunteerChoice === null && styles.errorBorder]}
+                      onPress={() => setVolunteerChoice('yes')}
+                    >
+                      <Text style={[styles.toggleText, volunteerChoice === 'yes' && styles.toggleTextActive]}>Yes, view roles</Text>
+                    </Pressable>
+                    
+                    <Pressable 
+                      style={[styles.toggleBtn, volunteerChoice === 'no' && styles.toggleBtnActive, showErrors && volunteerChoice === null && styles.errorBorder]}
+                      onPress={() => { setVolunteerChoice('no'); setSelectedRole(null); }}
+                    >
+                      <Text style={[styles.toggleText, volunteerChoice === 'no' && styles.toggleTextActive]}>No</Text>
+                    </Pressable>
+                  </View>
+                  {showErrors && volunteerChoice === null && <Text style={styles.errorText}>● Please select an option.</Text>}
+                </View>
+
+                {/* DYNAMIC SCROLLABLE AREA */}
+                <View style={{ flex: 1, marginTop: 15 }}>
+                  {volunteerChoice === 'yes' && (
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10, paddingRight: 10 }}>
+                      
+                      <View style={styles.rolesContainer}>
+                        {volunteerRoles.map(role => (
+                          <Pressable 
+                            key={role.id}
+                            style={[styles.roleCard, selectedRole === role.id && styles.roleCardActive, showErrors && volunteerChoice === 'yes' && selectedRole === null && styles.errorBorder]}
+                            onPress={() => setSelectedRole(role.id)}
+                          >
+                            <View style={styles.roleIconBox}>
+                              <Image source={{ uri: role.icon }} style={styles.roleIcon} resizeMode="contain" />
+                              <Text style={styles.roleIconLabel}>{role.title}</Text>
+                            </View>
+                            <View style={styles.roleTextContainer}>
+                              <Text style={styles.roleTitle}>{role.title}</Text>
+                              <Text style={styles.roleDesc}>{role.desc}</Text>
+                            </View>
+                          </Pressable>
+                        ))}
+                        {showErrors && volunteerChoice === 'yes' && selectedRole === null && (
+                          <Text style={[styles.errorText, { marginTop: 0 }]}>● Please select a volunteer role.</Text>
+                        )}
+                      </View>
+
+                      {/* DOCUMENT UPLOAD */}
+                      {selectedRole !== null && (
+                        <View style={{ marginTop: 15 }}>
+                          <Text style={[styles.fieldLabel, { fontSize: 14, marginBottom: 5 }]}>Required Documents:</Text>
+                          <View style={styles.documentsContainer}>
+                            {selectedRole === 'medic' && (
+                              <View style={styles.uploadRow}>
+                                <View style={styles.uploadInfo}><Text style={styles.docIcon}>📄</Text><Text style={styles.uploadText}>Upload Medical License</Text></View>
+                                <Pressable style={styles.uploadBtn}><Text style={styles.uploadBtnText}>Upload</Text></Pressable>
+                              </View>
+                            )}
+                            {selectedRole === 'logistics' && (
+                              <View style={styles.uploadRow}>
+                                <View style={styles.uploadInfo}><Text style={styles.docIcon}>📄</Text><Text style={styles.uploadText}>Upload Valid Driver's License</Text></View>
+                                <Pressable style={styles.uploadBtn}><Text style={styles.uploadBtnText}>Upload</Text></Pressable>
+                              </View>
+                            )}
+                            {selectedRole === 'field' && (
+                              <>
+                                <View style={styles.uploadRow}>
+                                  <View style={styles.uploadInfo}><Text style={styles.docIcon}>📄</Text><Text style={styles.uploadText}>Upload Photo ID</Text></View>
+                                  <Pressable style={styles.uploadBtn}><Text style={styles.uploadBtnText}>Upload</Text></Pressable>
+                                </View>
+                                <View style={styles.uploadRow}>
+                                  <View style={styles.uploadInfo}><Text style={styles.docIcon}>📄</Text><Text style={styles.uploadText}>Upload Background Check Auth.</Text></View>
+                                  <Pressable style={styles.uploadBtn}><Text style={styles.uploadBtnText}>Upload</Text></Pressable>
+                                </View>
+                              </>
+                            )}
+                          </View>
+                          
+                          {/* VETTING CHECKBOXES */}
+                          <Text style={[styles.fieldLabel, { fontSize: 14, marginTop: 15, marginBottom: 8 }]}>Checkbox for Vetting:</Text>
+                          <View style={styles.checkboxGroup}>
+                            <Pressable style={styles.checkboxRowSmall} onPress={() => toggleCheckbox('background')}>
+                              <View style={[styles.checkboxSquareSmall, checkboxes.background && styles.checkboxSquareActive, showErrors && !checkboxes.background && styles.errorBorder]}>
+                                {checkboxes.background && <Text style={styles.checkmarkSmall}>✓</Text>}
+                              </View>
+                              <Text style={[styles.checkboxLabelSmall, showErrors && !checkboxes.background && {color: '#E53E3E'}]}>I agree to a background check.</Text>
+                            </Pressable>
+
+                            <Pressable style={styles.checkboxRowSmall} onPress={() => toggleCheckbox('documents')}>
+                              <View style={[styles.checkboxSquareSmall, checkboxes.documents && styles.checkboxSquareActive, showErrors && !checkboxes.documents && styles.errorBorder]}>
+                                {checkboxes.documents && <Text style={styles.checkmarkSmall}>✓</Text>}
+                              </View>
+                              <Text style={[styles.checkboxLabelSmall, showErrors && !checkboxes.documents && {color: '#E53E3E'}]}>I have uploaded all required documents.</Text>
+                            </Pressable>
+
+                            <Pressable style={styles.checkboxRowSmall} onPress={() => toggleCheckbox('age')}>
+                              <View style={[styles.checkboxSquareSmall, checkboxes.age && styles.checkboxSquareActive, showErrors && !checkboxes.age && styles.errorBorder]}>
+                                {checkboxes.age && <Text style={styles.checkmarkSmall}>✓</Text>}
+                              </View>
+                              <Text style={[styles.checkboxLabelSmall, showErrors && !checkboxes.age && {color: '#E53E3E'}]}>I confirm I am over 18 years old.</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      )}
+
+                    </ScrollView>
+                  )}
+                </View>
+
+                {/* FIXED SUBMIT BUTTON AT BOTTOM */}
+                <View style={{ paddingTop: 15 }}>
+                  {showErrors && (!isSiteValid || !isTimeValid || !isItemsValid || !isVolunteerValid) && (
+                    <Text style={[styles.errorText, { textAlign: 'center', marginBottom: 10, fontSize: 13 }]}>
+                      ● Please address all required fields highlighted above.
+                    </Text>
+                  )}
+                  <Pressable style={styles.submitPledgeBtn} onPress={handleInitialSubmit}>
+                    <Text style={styles.submitBtnText}>Submit Pledge Donation</Text>
+                  </Pressable>
+                </View>
+
+              </View>
+
             </View>
-
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -378,7 +448,9 @@ const styles = StyleSheet.create({
   bgImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   bgOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0F172A', opacity: 0.75 },
 
-  contentCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 30, width: '95%', maxWidth: 1250, minHeight: '80%', boxShadow: '0px 15px 45px rgba(0, 0, 0, 0.4)', zIndex: 2 } as any,
+  // Locked height prevents the UI from expanding and jumping
+  contentCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 30, width: '95%', maxWidth: 1250, height: '85%', minHeight: 650, maxHeight: 800, boxShadow: '0px 15px 45px rgba(0, 0, 0, 0.4)', zIndex: 2, display: 'flex', flexDirection: 'column' } as any,
+  
   headerBanner: { backgroundColor: '#2D8A61', borderRadius: 15, paddingVertical: 15, alignItems: 'center', marginBottom: 30 },
   bannerText: { color: '#FFFFFF', fontSize: 32, fontWeight: 'bold' },
 
@@ -399,7 +471,9 @@ const styles = StyleSheet.create({
   itemHeaders: { flexDirection: 'row', gap: 10, marginBottom: 5, paddingHorizontal: 5 } as any,
   qtyHeader: { width: 55, textAlign: 'center', fontSize: 13, fontWeight: 'bold', color: '#555' },
   nameHeader: { flex: 1, fontSize: 13, fontWeight: 'bold', color: '#555' },
-  itemsOuterFrame: { flex: 1, maxHeight: 350, borderWidth: 1, borderColor: '#CCCCCC', borderRadius: 10, padding: 10, backgroundColor: '#FAFAFA' },
+  
+  // Flex 1 ensures it fills the middle column but stops perfectly at the Add Item button
+  itemsOuterFrame: { flex: 1, borderWidth: 1, borderColor: '#CCCCCC', borderRadius: 10, padding: 10, backgroundColor: '#FAFAFA' },
   itemsScroll: { flex: 1 },
   itemRow: { flexDirection: 'row', gap: 10, marginBottom: 10, alignItems: 'center' } as any,
   qtyBox: { width: 55, backgroundColor: '#E5E7EB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#CCCCCC', textAlign: 'center', color: '#000' } as any,
@@ -416,17 +490,32 @@ const styles = StyleSheet.create({
   toggleText: { fontWeight: 'bold', fontSize: 14, color: '#444' },
   toggleTextActive: { color: '#2D8A61' },
 
-  rolesContainer: { marginTop: 15 },
-  roleCard: { flexDirection: 'row', backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#CCCCCC', padding: 12, borderRadius: 10, marginBottom: 10, alignItems: 'center' } as any,
+  rolesContainer: { marginTop: 0 },
+  roleCard: { flexDirection: 'row', backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#CCCCCC', padding: 10, borderRadius: 10, marginBottom: 8, alignItems: 'center' } as any,
   roleCardActive: { backgroundColor: '#D1E8D1', borderColor: '#2D8A61' },
-  roleIconBox: { width: 55, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  roleIcon: { width: 32, height: 32, marginBottom: 4 },
-  roleIconLabel: { fontSize: 11, fontWeight: 'bold', color: '#333', textAlign: 'center' },
+  roleIconBox: { width: 50, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  roleIcon: { width: 28, height: 28, marginBottom: 4 },
+  roleIconLabel: { fontSize: 10, fontWeight: 'bold', color: '#333', textAlign: 'center' },
   roleTextContainer: { flex: 1 },
-  roleTitle: { fontSize: 15, fontWeight: 'bold', color: '#111', marginBottom: 2 },
-  roleDesc: { fontSize: 12, color: '#444', lineHeight: 16 },
+  roleTitle: { fontSize: 14, fontWeight: 'bold', color: '#111', marginBottom: 2 },
+  roleDesc: { fontSize: 11, color: '#444', lineHeight: 14 },
 
-  submitPledgeBtn: { backgroundColor: '#2D8A61', paddingVertical: 15, borderRadius: 15, alignItems: 'center', marginTop: 15 },
+  documentsContainer: { flexDirection: 'column', gap: 8 } as any,
+  uploadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#AAA', borderStyle: 'dashed', borderRadius: 8, padding: 8, backgroundColor: '#FAFAFA' } as any,
+  uploadInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 10 } as any,
+  docIcon: { fontSize: 16, marginRight: 8 },
+  uploadText: { fontSize: 11, color: '#555', flex: 1 },
+  uploadBtn: { backgroundColor: '#4273B8', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  uploadBtnText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
+
+  checkboxGroup: { flexDirection: 'column', gap: 8 },
+  checkboxRowSmall: { flexDirection: 'row', alignItems: 'flex-start' } as any,
+  checkboxSquareSmall: { width: 16, height: 16, borderWidth: 1, borderColor: '#111', marginRight: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2, backgroundColor: '#FFF' },
+  checkboxSquareActive: { backgroundColor: '#111' },
+  checkmarkSmall: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+  checkboxLabelSmall: { fontSize: 12, color: '#333', flex: 1, lineHeight: 18 },
+
+  submitPledgeBtn: { backgroundColor: '#2D8A61', paddingVertical: 15, borderRadius: 15, alignItems: 'center' },
   submitBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
 
   // =========================================
@@ -438,7 +527,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999, // Extremely high z-index to cover everything including navbar
+    zIndex: 9999,
   } as any,
   modalContent: {
     backgroundColor: '#FFFFFF',
@@ -532,7 +621,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmBtnDisabled: {
-    backgroundColor: '#94A3B8', // Greyed out when not confirmed
+    backgroundColor: '#94A3B8',
   },
   confirmBtnText: {
     color: '#FFFFFF',
