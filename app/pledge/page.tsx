@@ -1,12 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, Image, ScrollView, TextInput } from 'react-native';
 import { useRouter } from 'next/navigation';
 
 export default function PledgePage() {
   const router = useRouter();
   
+  // --- NEW: Track if they came from the Volunteer page ---
+  const [cameFromVolunteer, setCameFromVolunteer] = useState(false);
+
+  useEffect(() => {
+    // Check session storage when the page loads
+    if (typeof window !== 'undefined' && sessionStorage.getItem('fromVolunteer') === 'true') {
+      setCameFromVolunteer(true);
+    }
+  }, []);
+
   const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
   const [selectedSite, setSelectedSite] = useState('Select Site Location');
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
@@ -16,6 +26,7 @@ export default function PledgePage() {
   const [showErrors, setShowErrors] = useState(false);
   const [showModal, setShowModal] = useState(false); 
   const [showVolunteerModal, setShowVolunteerModal] = useState(false); 
+  const [showSimpleSuccessModal, setShowSimpleSuccessModal] = useState(false); // NEW MODAL STATE
   const [isConfirmed, setIsConfirmed] = useState(false);
 
   const ustBuildings = ["UST Main Building", "UST Hospital", "Roque Ruaño Building", "St. Martin de Porres Building", "St. Pier Giorgio Frassati, O.P. Building", "Albertus Magnus Building", "Benavides Building", "St. Raymund de Peñafort Building"];
@@ -41,18 +52,36 @@ export default function PledgePage() {
     } else { setShowErrors(true); }
   };
 
+  // --- NEW LOGIC: Route to the correct modal based on the flag ---
   const handleFinalConfirm = () => {
-    if (isConfirmed) { setShowModal(false); setShowVolunteerModal(true); }
+    if (isConfirmed) { 
+      setShowModal(false); 
+      
+      if (cameFromVolunteer) {
+        setShowSimpleSuccessModal(true);
+        // Clean up the flag so it doesn't trigger on future separate visits
+        if (typeof window !== 'undefined') sessionStorage.removeItem('fromVolunteer');
+      } else {
+        setShowVolunteerModal(true); 
+      }
+    }
   };
 
   const handleVolunteerChoice = (choice: 'yes' | 'no') => {
     setShowVolunteerModal(false);
-    if (choice === 'yes') { router.push('/volunteer'); } else { router.push('/'); }
+    if (choice === 'yes') { 
+      // NEW: Set a flag before sending them to the Volunteer page
+      if (typeof window !== 'undefined') sessionStorage.setItem('fromPledge', 'true');
+      router.push('/volunteer'); 
+    } else { 
+      router.push('/'); 
+    }
   };
 
   return (
     <View style={styles.container}>
       
+      {/* 1. INITIAL CONFIRMATION MODAL */}
       {showModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -87,6 +116,7 @@ export default function PledgePage() {
         </View>
       )}
 
+      {/* 2. STANDARD SUCCESS MODAL (Asks if they want to Volunteer) */}
       {showVolunteerModal && (
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { alignItems: 'center', padding: 40 }]}>
@@ -105,10 +135,28 @@ export default function PledgePage() {
         </View>
       )}
 
+      {/* 3. NEW SIMPLE SUCCESS MODAL (For users who already volunteered) */}
+      {showSimpleSuccessModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center', padding: 40 }]}>
+            <View style={styles.checkmarkIconCircle}><Text style={styles.checkmarkIconText}>✓</Text></View>
+            <Text style={styles.modalTitle}>Pledge Confirmed!</Text>
+            <Text style={{ textAlign: 'center', fontSize: 15, color: '#4B5563', marginBottom: 30, lineHeight: 24 }}>
+              Thank you so much for your donation, and thank you again for volunteering! Your dedication makes a huge difference.
+            </Text>
+            <Pressable 
+              style={(state: any) => [styles.primaryBlueBtn, styles.animated, { width: '100%' }, state.hovered && { transform: [{ scale: 0.98 }] }]} 
+              onPress={() => router.push('/')}
+            >
+              <Text style={styles.primaryBlueBtnText}>Return to Homepage</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       {/* NAVIGATION BAR */}
       <View style={styles.navBar}>
         <View style={styles.navLeft}>
-          {/* UPDATED: Added BayaniHub text inside the Pressable */}
           <Pressable onPress={() => router.push('/')} style={(state: any) => [styles.logoContainer, styles.animated, state.hovered && { transform: [{ scale: 1.02 }] }]}>
             <Image source={{ uri: '/logo_b.png' }} style={styles.logoImage} resizeMode="contain" />
             <Text style={styles.brandName}>BayaniHub</Text>
@@ -242,12 +290,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB', height: '100vh', overflow: 'hidden' } as any,
   navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 40, height: 90, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', zIndex: 10 } as any,
   navLeft: { flexDirection: 'row', alignItems: 'center', gap: 40 } as any,
-  
-  // UPDATED: Kept logoContainer as a row to place text beside image
   logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 } as any,
   logoImage: { width: 45, height: 45 },
- brandName: { fontSize: 24, fontWeight: '400', color: '#111827', letterSpacing: -0.5 },
-  
+  brandName: { fontSize: 24, fontWeight: '400', color: '#111827', letterSpacing: -0.5 },
   navLinks: { flexDirection: 'row', gap: 40 } as any,
   navLink: { fontSize: 16, color: '#4B5563', fontWeight: '600' },
   navRight: { flexDirection: 'row', alignItems: 'center', gap: 25 } as any,

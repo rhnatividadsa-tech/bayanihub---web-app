@@ -7,6 +7,15 @@ import { useRouter } from 'next/navigation';
 export default function VolunteerPage() {
   const router = useRouter();
 
+  // --- NEW: Track if they came from the Pledge page ---
+  const [cameFromPledge, setCameFromPledge] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('fromPledge') === 'true') {
+      setCameFromPledge(true);
+    }
+  }, []);
+
   // --- STEP STATE ---
   const [step, setStep] = useState(1);
 
@@ -375,11 +384,9 @@ export default function VolunteerPage() {
               </View>
 
               {/* Right Column: Capacity Checker & Next Button */}
-              {/* UPDATED: Changed to flex-start to align capacity checker to the top */}
               <View style={[styles.rightColumnOutline, { flex: 1, justifyContent: 'space-between' }]}>
                 <View>
-                  {/* Margin set to exactly match the height of the dropdown label above it */}
-                  <View style={[styles.trackerContainer, { marginTop: 85 }]}>
+                  <View style={[styles.trackerContainer, { marginTop: 30 }]}>
                     <Text style={styles.trackerHeader}>Capacity Checker</Text>
                     <View style={styles.capacityInfoRow}>
                       <Text style={styles.capacityLabelText}>Real-Time Capacity:</Text>
@@ -447,7 +454,6 @@ export default function VolunteerPage() {
               {/* Right Column */}
               <View style={[styles.rightColumnOutline, { flex: 1 }]}>
                 <View>
-                  {/* Moved Availability here to balance heights */}
                   <Text style={[styles.sectionHeaderTitle]}>Availability & Logistics</Text>
                   <View style={[styles.questionRow, { paddingRight: 30 }]}>
                     <Text style={styles.questionText}>Do you have <Text style={{fontWeight:'700'}}>personal transportation</Text> to a disaster site?</Text>
@@ -530,14 +536,32 @@ export default function VolunteerPage() {
                   <Text style={styles.successDetail}>Your status is currently: <Text style={{fontWeight: 'bold'}}>[Document Processing]</Text></Text>
                   <Text style={styles.successDetail}><Text style={{fontWeight: 'bold'}}>Summary:</Text> {selectedRole ? selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1) : ''} Role ({selectedTime})</Text>
 
-                  {/* DONOR PROMPT */}
-                  <View style={styles.donorPromptBox}>
-                    <Text style={styles.donorPromptTitle}>Do you want to be a Donor?</Text>
-                    <View style={styles.donorPromptBtns}>
-                      <Pressable style={styles.yesDonorBtn} onPress={() => router.push('/pledge')}><Text style={styles.yesDonorBtnText}>Yes, I want to be a donor</Text></Pressable>
-                      <Pressable style={styles.noDonorBtn} onPress={() => router.push('/')}><Text style={styles.noDonorBtnText}>No, Return to Homepage</Text></Pressable>
+                  {/* DONOR PROMPT: Conditional logic based on where they came from */}
+                  {!cameFromPledge ? (
+                    <View style={styles.donorPromptBox}>
+                      <Text style={styles.donorPromptTitle}>Do you want to be a Donor?</Text>
+                      <View style={styles.donorPromptBtns}>
+                        <Pressable style={styles.yesDonorBtn} onPress={() => {
+                          if (typeof window !== 'undefined') sessionStorage.setItem('fromVolunteer', 'true');
+                          router.push('/pledge');
+                        }}><Text style={styles.yesDonorBtnText}>Yes, I want to be a donor</Text></Pressable>
+                        <Pressable style={styles.noDonorBtn} onPress={() => router.push('/')}><Text style={styles.noDonorBtnText}>No, Return to Homepage</Text></Pressable>
+                      </View>
                     </View>
-                  </View>
+                  ) : (
+                    // If they came from Pledge, skip the prompt and just show a return button
+                    <View style={[styles.donorPromptBox, { borderTopWidth: 0, paddingTop: 10 }]}>
+                      <Pressable 
+                        style={(state: any) => [styles.blueButtonFull, styles.animated, state.hovered && styles.btnHover, { maxWidth: 300 }]} 
+                        onPress={() => {
+                          if (typeof window !== 'undefined') sessionStorage.removeItem('fromPledge');
+                          router.push('/');
+                        }}
+                      >
+                        <Text style={styles.blueButtonText}>Return to Homepage</Text>
+                      </Pressable>
+                    </View>
+                  )}
 
                 </View>
               </View>
@@ -602,7 +626,7 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: { fontSize: 17, fontWeight: '500', color: '#111827', marginBottom: 15 },
   bodyText: { fontSize: 14, color: '#374151', lineHeight: 22 },
   
-  // TRACKER CARD - Made slightly thinner
+  // TRACKER CARD
   trackerContainer: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, padding: 20, backgroundColor: '#FFFFFF' },
   trackerHeader: { fontSize: 18, fontWeight: '500', color: '#111827', marginBottom: 15 },
   trackerBarRow: { flexDirection: 'row', gap: 10, marginBottom: 15 } as any,
@@ -650,7 +674,6 @@ const styles = StyleSheet.create({
   
   bulletList: { paddingLeft: 15, marginTop: 15 },
   
-  // NEW ROLE LAYOUT - Side by side
   roleListGroup: { marginTop: 20, flexDirection: 'row', gap: 20, justifyContent: 'space-between' } as any,
   roleItemColumn: { flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 25, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' } as any,
   roleIconWrapper: { alignItems: 'center', marginBottom: 15 },
